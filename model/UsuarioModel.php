@@ -22,6 +22,30 @@ class UsuarioModel
         return $sql;
     }
 
+    // Obtener usuario por ID
+    public function obtenerUsuarioPorId($id)
+    {
+        if (!is_numeric($id) || $id <= 0) {
+            return false;
+        }
+        $consulta = "SELECT id, nro_identidad, razon_social, correo, departamento, provincia, distrito, cod_postal, direccion, rol, estado FROM persona WHERE id = ? LIMIT 1";
+        $stmt = $this->conexion->prepare($consulta);
+        if (!$stmt) {
+            error_log("Error en prepare(): " . $this->conexion->error);
+            return false;
+        }
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $resultado = $stmt->get_result();
+        if ($resultado && $resultado->num_rows > 0) {
+            $usuario = $resultado->fetch_object();
+            $stmt->close();
+            return $usuario;
+        }
+        $stmt->close();
+        return false;
+    }
+
     //existe la persona
     public function existePersona($nro_identidad)
     {

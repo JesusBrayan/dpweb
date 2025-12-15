@@ -31,10 +31,10 @@
                 id="busquedaProducto"
                 onkeyup="view_products_cards()">
 
-                <input type="hidden" id="id_producto_venta">
-                <input type="hidden" id="producto_precio_venta">
-                <input type="hidden" id="producto_cantidad_venta">
-            
+            <input type="hidden" id="id_producto_venta">
+            <input type="hidden" id="producto_precio_venta">
+            <input type="hidden" id="producto_cantidad_venta">
+
 
         </div>
     </div>
@@ -94,10 +94,78 @@
                             <span id="totalGeneral" class="fw-bold text-success fs-6">S/ 0.00</span>
                         </div>
                     </div>
+                    <!-- Button trigger modal -->
 
-                    <button class="btn btn-success w-100 fw-bold py-2">
-                        <i class="bi bi-cash-stack"></i> Realizar Venta
-                    </button>
+                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#exampleModal">Realizar Venta</button>
+
+                    <!-- Modal -->
+                    <div class="modal fade modal-lg" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h1 class="modal-title fs-5" id="exampleModalLabel">Registro de Venta</h1>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+
+                                <div class="modal-body">
+                                    <form id="form_venta">
+                                        <!-- Buscar cliente -->
+                                        <div class="row g-3 align-items-end mb-3">
+                                            <div class="col-md-6">
+                                                <label for="cliente_dni" class="form-label fw-semibold">DNI Cliente</label>
+                                                <input
+                                                    type="text"
+                                                    class="form-control"
+                                                    id="cliente_dni"
+                                                    name="cliente_dni"
+                                                    maxlength="9"
+                                                    placeholder="Ingrese DNI"
+                                                    oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+                                            </div>
+
+                                            <div class="col-md-3">
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2"
+                                                    onclick="buscarCliente()">
+                                                    🔍 Buscar
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Nombre del cliente -->
+                                        <div class="mb-3">
+                                            <label for="cliente_nombre" class="form-label fw-semibold">Nombre del Cliente</label>
+                                            <input
+                                                type="text"
+                                                class="form-control bg-light"
+                                                id="cliente_nombre"
+                                                name="cliente_nombre"
+                                                readonly
+                                                placeholder="Cliente no seleccionado">
+                                        </div>
+
+                                        <!-- Fecha de venta -->
+                                        <div class="mb-3">
+                                            <label for="fecha_venta" class="form-label fw-semibold">Fecha de Venta</label>
+                                            <input
+                                                type="datetime-local"
+                                                class="form-control"
+                                                id="fecha_venta"
+                                                name="fecha_venta"
+                                                value="<?= date('Y-m-d\TH:i') ?>">
+                                        </div>
+                                    </form>
+                                </div>
+
+
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                                    <button type="button" class="btn btn-primary" onclick="registrarVenta()">Registrar Venta</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -107,10 +175,12 @@
 <!-- Script que genera las cards -->
 <script src="<?= BASE_URL ?>view/function/lista.js"></script>
 <script src="<?= BASE_URL ?>view/function/venta.js"></script>
+
+<!-- Script para agregar producto al presionar Enter-->
 <script>
     let input = document.getElementById("busquedaProducto");
-    input.addEventListener('keydown',(event)=>{
-        if (event.key =='Enter'){
+    input.addEventListener('keydown', (event) => {
+        if (event.key == 'Enter') {
             agregar_producto_temporal();
         }
     })
@@ -118,11 +188,29 @@
 <!-- Modal para ver detalles del producto -->
 <style>
     /* Estilos para modal de producto */
-    .product-modal-img { max-height: 320px; object-fit: contain; border-radius: .5rem; box-shadow: 0 6px 18px rgba(0,0,0,0.12); }
-    .product-price { font-size: 1.6rem; color: #0d6efd; font-weight: 700; }
-    .product-badge { font-size: .85rem; margin-right: .4rem; }
-    .product-attr { color: #6c757d; }
+    .product-modal-img {
+        max-height: 320px;
+        object-fit: contain;
+        border-radius: .5rem;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+    }
+
+    .product-price {
+        font-size: 1.6rem;
+        color: #0d6efd;
+        font-weight: 700;
+    }
+
+    .product-badge {
+        font-size: .85rem;
+        margin-right: .4rem;
+    }
+
+    .product-attr {
+        color: #6c757d;
+    }
 </style>
+
 <div class="modal fade" id="productModal" tabindex="-1" aria-labelledby="productModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">

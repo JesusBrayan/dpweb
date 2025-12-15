@@ -19,7 +19,7 @@ async function view_products_cards() {
             console.error(" No se encontró el contenedor #content_products");
             return;
         }
-        let cont =1;
+        let cont = 1;
         contenido.innerHTML = '';
 
         if (json.status && json.data.length > 0) {
@@ -153,24 +153,24 @@ if (document.getElementById('content_products')) {
 // -- Carrito (cliente) --
 const carrito = {}; // { id: {id,nombre,precio,cantidad,total}}
 
-function formatCurrency(value){
+function formatCurrency(value) {
     return 'S/ ' + parseFloat(value).toFixed(2);
 }
 
-function escapeHtml(str){
+function escapeHtml(str) {
     if (!str && str !== 0) return '';
-    return String(str).replace(/&/g, '&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function addToCartFromButton(btn){
+function addToCartFromButton(btn) {
     const id = btn.getAttribute('data-id');
     const nombre = btn.getAttribute('data-nombre');
     const precio = parseFloat(btn.getAttribute('data-precio')) || 0;
     const stock = parseInt(btn.getAttribute('data-stock')) || 0;
-    addToCart({id, nombre, precio, stock}, 1);
+    addToCart({ id, nombre, precio, stock }, 1);
 }
 
-function showProductDetailsFromButton(btn){
+function showProductDetailsFromButton(btn) {
     const id = btn.getAttribute('data-id');
     const nombre = btn.getAttribute('data-nombre');
     const detalle = btn.getAttribute('data-detalle');
@@ -209,7 +209,7 @@ function showProductDetailsFromButton(btn){
         agregarBtn.parentNode.replaceChild(newBtn, agregarBtn);
         newBtn.addEventListener('click', () => {
             const qty = parseInt(document.getElementById('modalCantidad').value) || 1;
-            addToCart({id, nombre, precio: parseFloat(precio)||0, stock: parseInt(stock)||0}, qty);
+            addToCart({ id, nombre, precio: parseFloat(precio) || 0, stock: parseInt(stock) || 0 }, qty);
             // hide modal
             const modalEl = document.getElementById('productModal');
             const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
@@ -223,11 +223,11 @@ function showProductDetailsFromButton(btn){
     modal.show();
 }
 
-function addToCart(producto, cantidad){
+function addToCart(producto, cantidad) {
     const id = producto.id;
     if (!id) return;
     const qty = parseInt(cantidad) || 1;
-    if (carrito[id]){
+    if (carrito[id]) {
         carrito[id].cantidad += qty;
     } else {
         carrito[id] = {
@@ -245,30 +245,49 @@ function addToCart(producto, cantidad){
         console.warn('showToast falló:', e);
     }
 
-    // También persistir temporalmente en servidor (si existe la función agregar_producto_temporal)
+    // Persistir temporalmente en servidor
+    guardarProductoTemporal(producto.id, producto.precio, carrito[id].cantidad);
+}
+
+// Función para guardar producto temporal en la base de datos
+async function guardarProductoTemporal(id_producto, precio, cantidad) {
     try {
-        const idInput = document.getElementById('id_producto_venta');
-        const precioInput = document.getElementById('producto_precio_venta');
-        const cantidadInput = document.getElementById('producto_cantidad_venta');
-        if (idInput && precioInput && cantidadInput) {
-            idInput.value = producto.id;
-            precioInput.value = producto.precio;
-            cantidadInput.value = carrito[id].cantidad;
-            if (typeof agregar_producto_temporal === 'function') {
-                agregar_producto_temporal();
+        const datos = new FormData();
+        datos.append('id_producto', id_producto);
+        datos.append('precio', precio);
+        datos.append('cantidad', cantidad);
+
+        const respuesta = await fetch(base_url + 'control/VentaController.php?tipo=registrar_temporal', {
+            method: 'POST',
+            mode: 'cors',
+            cache: 'no-cache',
+            body: datos
+        });
+
+        const json = await respuesta.json();
+        if (json.status) {
+            console.log('Producto temporal guardado:', json.msg);
+            // Recargar la lista de temporales si existe
+            if (typeof cargarListaTemporales === 'function') {
+                cargarListaTemporales();
             }
+        } else {
+            console.warn('Error al guardar producto temporal:', json.msg);
         }
-    } catch (e) {
-        console.warn('No se pudo persistir temporalmente:', e);
+    } catch (error) {
+        console.error('Error al guardar producto temporal:', error);
     }
 }
+
+
+
 // Renderizar carrito en tabla
-function renderCart(){
+function renderCart() {
     const tabla = document.getElementById('tablaCarrito');
     if (!tabla) return;
     tabla.innerHTML = '';
     const keys = Object.keys(carrito);
-    if (keys.length === 0){
+    if (keys.length === 0) {
         tabla.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">No hay productos en la lista.</td></tr>`;
         updateTotals();
         return;
@@ -281,38 +300,101 @@ function renderCart(){
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${escapeHtml(it.nombre)}</td>
-            <td class="text-center">${it.cantidad}</td>
+            <td class="text-center">
+    <input type="number" value="${it.cantidad}" min="1" style="width:50px; font-size:12px; text-align:center;" class="input-cantidad" data-id="${it.id}">
+</td>
+    
             <td>${formatCurrency(it.precio)}</td>
-            <td>${formatCurrency(total)}</td>
+            <td class="total-producto">${formatCurrency(total)}</td>
             
             <td class="text-center">
-                <button class="btn btn-sm btn-outline-danger btn-remove" data-id="${it.id}" title="Eliminar" aria-label="Eliminar producto">
-                    <i class="bi bi-trash-fill"></i>
+                <button class="btn btn-sm btn-danger d-flex align-items-center gap-1 btn-remove" 
+                data-id="${it.id}">
+               <i class="bi bi-trash"></i> Eliminar
                 </button>
             </td>
         `;
         tabla.appendChild(tr);
     });
+
+
     // en la tabla agregar event listeners a botones eliminar
-    tabla.querySelectorAll('.btn-remove').forEach(b => b.addEventListener('click', (e)=>{
+    tabla.querySelectorAll('.btn-remove').forEach(b => b.addEventListener('click', (e) => {
         const id = b.getAttribute('data-id');
         removeFromCart(id);
         showToast('Producto eliminado', 'error', 1500);
     }));
+
+    // Agregar event listeners a inputs de cantidad
+    tabla.querySelectorAll('.input-cantidad').forEach(input => {
+        input.addEventListener('change', (e) => {
+            const id = input.getAttribute('data-id');
+            const newCantidad = parseInt(input.value) || 1;
+            
+            if (newCantidad < 1) {
+                input.value = 1;
+                return;
+            }
+
+            if (carrito[id]) {
+                carrito[id].cantidad = newCantidad;
+                
+                // Actualizar el total del producto en la tabla
+                const fila = input.closest('tr');
+                const totalCell = fila.querySelector('.total-producto');
+                const nuevoTotal = carrito[id].precio * newCantidad;
+                totalCell.textContent = formatCurrency(nuevoTotal);
+                
+                // Actualizar totales generales
+                updateTotals();
+                
+                // Guardar cambio en base de datos
+                guardarProductoTemporal(id, carrito[id].precio, newCantidad);
+            }
+        });
+    });
     updateTotals(subtotal);
 }
 
-function removeFromCart(id){
+function removeFromCart(id) {
     if (!carrito[id]) return;
     delete carrito[id];
     renderCart();
+    // Eliminar también de la base de datos temporal
+    eliminarProductoTemporal(id);
 }
 
-function updateTotals(subtotal = 0){
-    const sub = subtotal || Object.values(carrito).reduce((s,it)=> s + (it.precio*it.cantidad), 0);
+// Función para eliminar producto temporal de la base de datos
+async function eliminarProductoTemporal(id_producto) {
+    try {
+        const datos = new FormData();
+        datos.append('id_producto', id_producto);
+
+        const respuesta = await fetch(base_url + 'control/VentaController.php?tipo=eliminar_temporal', {
+            method: 'POST',
+            mode: 'cors',
+            cache: 'no-cache',
+            body: datos
+        });
+
+        const json = await respuesta.json();
+        if (json.status) {
+            console.log('Producto temporal eliminado:', json.msg);
+            // Recargar la lista de temporales si existe
+            if (typeof cargarListaTemporales === 'function') {
+                cargarListaTemporales();
+            }
+        }
+    } catch (error) {
+        console.error('Error al eliminar producto temporal:', error);
+    }
+}
+//  actualizar totales
+function updateTotals(subtotal = 0) {
+    const sub = subtotal || Object.values(carrito).reduce((s, it) => s + (it.precio * it.cantidad), 0);
     const igv = sub * 0.18;
     const total = sub + igv;
-    const fmt = (v)=> 'S/ ' + v.toFixed(2);
+    const fmt = (v) => 'S/ ' + v.toFixed(2);
     const subtotalEl = document.getElementById('subtotal');
     const igvEl = document.getElementById('igv');
     const totalEl = document.getElementById('totalGeneral');
@@ -358,4 +440,45 @@ function showToast(message, type = 'success', delay = 2000) {
     toast.addEventListener('hidden.bs.toast', () => {
         toast.remove();
     });
+}
+
+// Función para cargar y sincronizar productos temporales de la base de datos
+async function cargarListaTemporales() {
+    try {
+        const respuesta = await fetch(base_url + 'control/VentaController.php?tipo=listar_temporal', {
+            method: 'GET',
+            mode: 'cors',
+            cache: 'no-cache'
+        });
+
+        const json = await respuesta.json();
+
+        if (json.status && json.data && Array.isArray(json.data.data)) {
+            // Sincronizar carrito con los datos de la base de datos
+            carrito = {};
+            json.data.data.forEach(item => {
+                carrito[item.id_producto] = {
+                    id: item.id_producto,
+                    nombre: item.nombre,
+                    precio: parseFloat(item.precio),
+                    cantidad: parseInt(item.cantidad)
+                };
+            });
+
+            // Renderizar el carrito actualizado
+            renderCart();
+            console.log('Lista temporal sincronizada:', carrito);
+        }
+    } catch (error) {
+        console.error('Error al cargar lista temporal:', error);
+    }
+}
+
+// Cargar lista temporal al iniciar la página
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        cargarListaTemporales();
+    });
+} else {
+    cargarListaTemporales();
 }
