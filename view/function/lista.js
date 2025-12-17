@@ -470,7 +470,7 @@ async function cargarListaTemporales() {
             console.log('Lista temporal sincronizada:', carrito);
         }
     } catch (error) {
-        console.error('Error al cargar lista temporal:', error);
+        console.error ('Error al cargar lista temporal:', error);
     }
 }
 
